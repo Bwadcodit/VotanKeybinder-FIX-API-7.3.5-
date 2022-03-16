@@ -575,8 +575,8 @@ end
 
 local glass = "|t40:40:esoui/art/lfg/lfg_tabicon_grouptools_down.dds|t"
 local function SetupControl()
-	local templateName = GetAPIVersion() < 100033 and "ZO_InventorySearch" or "ZO_InventorySearchTemplate"
-	local bagSearchBg = WINDOW_MANAGER:CreateControlFromVirtual("$(parent)KeybinderSearch", ZO_Keybindings, templateName)
+	local templateName = "ZO_InventorySearchTemplate"
+	local bagSearchBg = WINDOW_MANAGER:CreateControlFromVirtual("$(parent)VotansKeybinderSearch", ZO_Keybindings, templateName)
 
 	local bagSearch = bagSearchBg:GetNamedChild("Box")
 	local bagSearchTx = bagSearch:GetNamedChild("Text")
