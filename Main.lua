@@ -94,9 +94,9 @@ local wm = GetWindowManager()
 local em = GetEventManager()
 local KEYBIND_DATA_TYPE = 3
 local keybindList = KEYBINDING_MANAGER.list
-local orgHandleBindingsLoaded = KEYBINDING_MANAGER.HandleBindingsLoaded
-local orgHandleBindingCleared = KEYBINDING_MANAGER.HandleBindingCleared
-local orgHandleBindingSet = KEYBINDING_MANAGER.HandleBindingSet
+--local orgOnKeybindingsLoaded = KEYBINDING_MANAGER.OnKeybindingsLoaded
+--local orgOnKeybindingCleared = KEYBINDING_MANAGER.OnKeybindingCleared
+--local orgOnKeybindingSet = KEYBINDING_MANAGER.OnKeybindingSet
 local maxBindings = GetMaxBindingsPerAction()
 local unbindAllKeysFromAction
 local bindKeyToAction
@@ -156,17 +156,19 @@ local function KeybindingsOfActionName(layerIndex, categoryIndex, actionIndex)
 end
 
 ----- UI -----
-function KEYBINDING_MANAGER:HandleBindingsLoaded()
+local function PreHookOnKeybindingsLoaded()
 	if addon.bindingsSyncronized then
 		addon:SyncKeybindings()
-		orgHandleBindingsLoaded(self)
 		addon.isDirty = false
+		return false -- continue with default function
 	else
 		addon.isDirty = true
 	end
+	return true -- block default function execution
 end
+ZO_PreHook(KEYBINDINGS_MANAGER, "OnKeybindingsLoaded", PreHookOnKeybindingsLoaded)
 
-function KEYBINDING_MANAGER.HandleBindingCleared(self, layerIndex, categoryIndex, actionIndex, bindingIndex)
+local function PreHookOnKeybindingCleared(self, layerIndex, categoryIndex, actionIndex, bindingIndex)
 	addon.isDirty = true
 	if addon.editMode then
 		local bind = {
@@ -183,11 +185,13 @@ function KEYBINDING_MANAGER.HandleBindingCleared(self, layerIndex, categoryIndex
 				addon.account.Keybindings[actionName][bindingIndex] = bind
 			end
 		end
-		return orgHandleBindingCleared(self, layerIndex, categoryIndex, actionIndex, bindingIndex)
+		return false -- continue with default function
 	end
+	return true -- block default function execution
 end
+ZO_PreHook(KEYBINDINGS_MANAGER, "OnKeybindingCleared", PreHookOnKeybindingCleared)
 
-function KEYBINDING_MANAGER.HandleBindingSet(self, layerIndex, categoryIndex, actionIndex, bindingIndex, keyCode, mod1, mod2, mod3, mod4)
+local function PreHookOnKeybindingSet(self, layerIndex, categoryIndex, actionIndex, bindingIndex, keyCode, mod1, mod2, mod3, mod4)
 	addon.isDirty = true
 	if addon.editMode then
 		local GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers = GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers
@@ -210,9 +214,11 @@ function KEYBINDING_MANAGER.HandleBindingSet(self, layerIndex, categoryIndex, ac
 				bindings[actionName][bindingIndex] = bind
 			end
 		end
-		return orgHandleBindingSet(self, layerIndex, categoryIndex, actionIndex, bindingIndex, keyCode, mod1, mod2, mod3, mod4)
+		return false -- continue with default function
 	end
+	return true -- block default function execution
 end
+ZO_PreHook(KEYBINDINGS_MANAGER, "OnKeybindingSet", PreHookOnKeybindingSet)
 
 local filterText = ""
 
@@ -224,13 +230,13 @@ local function HookBuildMasterList()
 	local ZO_ScrollList_CreateDataEntry = ZO_ScrollList_CreateDataEntry
 	local function AddBindingRow(masterList, layerIndex, categoryIndex, actionIndex, actionName, isRebindable, layerName, layerId, categoryName, categoryId, localizedActionName)
 		if not layerId then
-			masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(LAYER_DATA_TYPE, { layerIndex = layerIndex, layerName = layerName })
+			masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(LAYER_DATA_TYPE, ZO_EntryData:New({ layerIndex = layerIndex, layerName = layerName }))
 			layerId = #masterList
 		end
 
 		if not categoryId then
 			if categoryName ~= "" then
-				masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(CATEGORY_DATA_TYPE, { layerIndex = layerIndex, categoryIndex = categoryIndex, categoryName = categoryName })
+				masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(CATEGORY_DATA_TYPE, ZO_EntryData:New({ layerIndex = layerIndex, categoryIndex = categoryIndex, categoryName = categoryName }))
 				categoryId = #masterList
 			end
 		end
@@ -248,7 +254,7 @@ local function HookBuildMasterList()
 			categoryId = categoryId,
 		}
 
-		masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(KEYBIND_DATA_TYPE, data)
+		masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(KEYBIND_DATA_TYPE, ZO_EntryData:New(data))
 
 		return layerId, categoryId
 	end
