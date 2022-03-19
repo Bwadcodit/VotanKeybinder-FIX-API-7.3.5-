@@ -1,12 +1,10 @@
 local addon = {
 	name = "VotansKeybinder",
-	accountDefaults =
-	{
-		Keybindings = { }
+	accountDefaults = {
+		Keybindings = {}
 	},
 	isDirty = true,
-	DefaultGlobalActionName =
-	{
+	DefaultGlobalActionName = {
 		["ACTION_BUTTON_3"] = true,
 		["ACTION_BUTTON_4"] = true,
 		["ACTION_BUTTON_5"] = true,
@@ -86,25 +84,29 @@ local addon = {
 		["UI_SHORTCUT_SECONDARY"] = true,
 		["UI_SHORTCUT_SHOW_QUEST_ON_MAP"] = true,
 		["UI_SHORTCUT_TERTIARY"] = true,
-		["USE_SYNERGY"] = true,
-	},
+		["USE_SYNERGY"] = true
+	}
 }
 
 local wm = GetWindowManager()
 local em = GetEventManager()
 local KEYBIND_DATA_TYPE = 3
 local keybindList = KEYBINDING_MANAGER.list
---local orgOnKeybindingsLoaded = KEYBINDING_MANAGER.OnKeybindingsLoaded
---local orgOnKeybindingCleared = KEYBINDING_MANAGER.OnKeybindingCleared
---local orgOnKeybindingSet = KEYBINDING_MANAGER.OnKeybindingSet
+local orgHandleBindingsLoaded = KEYBINDING_MANAGER.HandleBindingsLoaded
+local orgHandleBindingCleared = KEYBINDING_MANAGER.HandleBindingCleared
+local orgHandleBindingSet = KEYBINDING_MANAGER.HandleBindingSet
 local maxBindings = GetMaxBindingsPerAction()
 local unbindAllKeysFromAction
 local bindKeyToAction
 
 ----- Helper for non-standard launcher -----
 if IsProtectedFunction("UnbindAllKeysFromAction") then
-	unbindAllKeysFromAction = function(...) CallSecureProtected("UnbindAllKeysFromAction", ...) end
-	bindKeyToAction = function(...) CallSecureProtected("BindKeyToAction", ...) end
+	unbindAllKeysFromAction = function(...)
+		CallSecureProtected("UnbindAllKeysFromAction", ...)
+	end
+	bindKeyToAction = function(...)
+		CallSecureProtected("BindKeyToAction", ...)
+	end
 elseif not IsPrivateFunction("UnbindAllKeysFromAction") then
 	unbindAllKeysFromAction = UnbindAllKeysFromAction
 	bindKeyToAction = BindKeyToAction
@@ -114,18 +116,24 @@ end
 
 ----- Helper functions -----
 local function CompareBinding(a, b)
-	if a == b then return true end
+	if a == b then
+		return true
+	end
 	local GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers = GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers
 	for bindIndex = 1, maxBindings do
 		local keyCode, mod1, mod2, mod3, mod4 = GetActionBindingInfo(b.layerIndex, b.categoryIndex, b.actionIndex, bindIndex)
 		local mod1a, mod2a, mod3a, mod4a =
-		ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_CTRL, mod1, mod2, mod3, mod4) and KEY_CTRL or 0,
-		ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_ALT, mod1, mod2, mod3, mod4) and KEY_ALT or 0,
-		ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_SHIFT, mod1, mod2, mod3, mod4) and KEY_SHIFT or 0,
-		ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_COMMAND, mod1, mod2, mod3, mod4) and KEY_COMMAND or 0
+			ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_CTRL, mod1, mod2, mod3, mod4) and KEY_CTRL or 0,
+			ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_ALT, mod1, mod2, mod3, mod4) and KEY_ALT or 0,
+			ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_SHIFT, mod1, mod2, mod3, mod4) and KEY_SHIFT or 0,
+			ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_COMMAND, mod1, mod2, mod3, mod4) and KEY_COMMAND or 0
 		local other = a[bindIndex]
-		if not other then return false end
-		if other.keyCode ~= keyCode or other.mod1 ~= mod1a or other.mod2 ~= mod2a or other.mod3 ~= mod3a or other.mod4 ~= mod4a then return false end
+		if not other then
+			return false
+		end
+		if other.keyCode ~= keyCode or other.mod1 ~= mod1a or other.mod2 ~= mod2a or other.mod3 ~= mod3a or other.mod4 ~= mod4a then
+			return false
+		end
 	end
 	return true
 end
@@ -134,41 +142,41 @@ local function HasBinding(b)
 	local GetActionBindingInfo = GetActionBindingInfo
 	for bindIndex = 1, maxBindings do
 		local keyCode = GetActionBindingInfo(b.layerIndex, b.categoryIndex, b.actionIndex, bindIndex)
-		if keyCode ~= 0 then return true end
+		if keyCode ~= 0 then
+			return true
+		end
 	end
 	return false
 end
 
 local function KeybindingsOfActionName(layerIndex, categoryIndex, actionIndex)
 	local GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers = GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers
-	local bindings = { }
+	local bindings = {}
 	for bindIndex = 1, maxBindings do
 		local keyCode, mod1, mod2, mod3, mod4 = GetActionBindingInfo(layerIndex, categoryIndex, actionIndex, bindIndex)
 		bindings[bindIndex] = {
 			keyCode = keyCode,
-			mod1 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_CTRL,mod1,mod2,mod3,mod4) and KEY_CTRL or 0,
-			mod2 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_ALT,mod1,mod2,mod3,mod4) and KEY_ALT or 0,
-			mod3 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_SHIFT,mod1,mod2,mod3,mod4) and KEY_SHIFT or 0,
-			mod4 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_COMMAND,mod1,mod2,mod3,mod4) and KEY_COMMAND or 0,
+			mod1 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_CTRL, mod1, mod2, mod3, mod4) and KEY_CTRL or 0,
+			mod2 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_ALT, mod1, mod2, mod3, mod4) and KEY_ALT or 0,
+			mod3 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_SHIFT, mod1, mod2, mod3, mod4) and KEY_SHIFT or 0,
+			mod4 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_COMMAND, mod1, mod2, mod3, mod4) and KEY_COMMAND or 0
 		}
 	end
 	return bindings
 end
 
 ----- UI -----
-local function PreHookOnKeybindingsLoaded()
+function addon:HandleBindingsLoaded()
+	d("jo1")
 	if addon.bindingsSyncronized then
 		addon:SyncKeybindings()
 		addon.isDirty = false
-		return false -- continue with default function
 	else
 		addon.isDirty = true
 	end
-	return true -- block default function execution
 end
-ZO_PreHook(KEYBINDINGS_MANAGER, "OnKeybindingsLoaded", PreHookOnKeybindingsLoaded)
 
-local function PreHookOnKeybindingCleared(self, layerIndex, categoryIndex, actionIndex, bindingIndex)
+function addon:HandleBindingCleared(layerIndex, categoryIndex, actionIndex, bindingIndex)
 	addon.isDirty = true
 	if addon.editMode then
 		local bind = {
@@ -176,7 +184,7 @@ local function PreHookOnKeybindingCleared(self, layerIndex, categoryIndex, actio
 			mod1 = 0,
 			mod2 = 0,
 			mod3 = 0,
-			mod4 = 0,
+			mod4 = 0
 		}
 		local actionName, isRebindable, isHidden = GetActionInfo(layerIndex, categoryIndex, actionIndex)
 		if not isHidden and addon.masterList[actionName] then
@@ -185,13 +193,10 @@ local function PreHookOnKeybindingCleared(self, layerIndex, categoryIndex, actio
 				addon.account.Keybindings[actionName][bindingIndex] = bind
 			end
 		end
-		return false -- continue with default function
 	end
-	return true -- block default function execution
 end
-ZO_PreHook(KEYBINDINGS_MANAGER, "OnKeybindingCleared", PreHookOnKeybindingCleared)
 
-local function PreHookOnKeybindingSet(self, layerIndex, categoryIndex, actionIndex, bindingIndex, keyCode, mod1, mod2, mod3, mod4)
+function addon:HandleBindingSet(layerIndex, categoryIndex, actionIndex, bindingIndex, keyCode, mod1, mod2, mod3, mod4)
 	addon.isDirty = true
 	if addon.editMode then
 		local GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers = GetActionBindingInfo, ZO_Keybindings_DoesKeyMatchAnyModifiers
@@ -201,10 +206,10 @@ local function PreHookOnKeybindingSet(self, layerIndex, categoryIndex, actionInd
 
 		local bind = {
 			keyCode = keyCode,
-			mod1 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_CTRL,mod1,mod2,mod3,mod4) and KEY_CTRL or 0,
-			mod2 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_ALT,mod1,mod2,mod3,mod4) and KEY_ALT or 0,
-			mod3 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_SHIFT,mod1,mod2,mod3,mod4) and KEY_SHIFT or 0,
-			mod4 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_COMMAND,mod1,mod2,mod3,mod4) and KEY_COMMAND or 0,
+			mod1 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_CTRL, mod1, mod2, mod3, mod4) and KEY_CTRL or 0,
+			mod2 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_ALT, mod1, mod2, mod3, mod4) and KEY_ALT or 0,
+			mod3 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_SHIFT, mod1, mod2, mod3, mod4) and KEY_SHIFT or 0,
+			mod4 = ZO_Keybindings_DoesKeyMatchAnyModifiers(KEY_COMMAND, mod1, mod2, mod3, mod4) and KEY_COMMAND or 0
 		}
 		local bindings = addon.account.Keybindings
 		-- if action name is not in list, we do not support it. e.g. no localization string
@@ -214,63 +219,43 @@ local function PreHookOnKeybindingSet(self, layerIndex, categoryIndex, actionInd
 				bindings[actionName][bindingIndex] = bind
 			end
 		end
-		return false -- continue with default function
 	end
-	return true -- block default function execution
 end
-ZO_PreHook(KEYBINDINGS_MANAGER, "OnKeybindingSet", PreHookOnKeybindingSet)
+
+em:RegisterForEvent(
+	addon.name,
+	EVENT_KEYBINDING_SET,
+	function(eventCode, ...)
+		addon:HandleBindingSet(...)
+	end
+)
+em:RegisterForEvent(
+	addon.name,
+	EVENT_KEYBINDING_CLEARED,
+	function(eventCode, ...)
+		addon:HandleBindingCleared(...)
+	end
+)
+em:RegisterForEvent(
+	addon.name,
+	EVENT_KEYBINDINGS_LOADED,
+	function(eventCode)
+		em:UnregisterForUpdate(addon.name)
+		em:RegisterForUpdate(
+			addon.name,
+			0,
+			function()
+				em:UnregisterForUpdate(addon.name)
+				addon:HandleBindingsLoaded()
+			end
+		)
+	end
+)
 
 local filterText = ""
 
 local function HookBuildMasterList()
-	local LAYER_DATA_TYPE = 1
-	local CATEGORY_DATA_TYPE = 2
-	local KEYBIND_DATA_TYPE = 3
-
-	local ZO_ScrollList_CreateDataEntry = ZO_ScrollList_CreateDataEntry
-	local function AddBindingRow(masterList, layerIndex, categoryIndex, actionIndex, actionName, isRebindable, layerName, layerId, categoryName, categoryId, localizedActionName)
-		if not layerId then
-			masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(LAYER_DATA_TYPE, ZO_EntryData:New({ layerIndex = layerIndex, layerName = layerName }))
-			layerId = #masterList
-		end
-
-		if not categoryId then
-			if categoryName ~= "" then
-				masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(CATEGORY_DATA_TYPE, ZO_EntryData:New({ layerIndex = layerIndex, categoryIndex = categoryIndex, categoryName = categoryName }))
-				categoryId = #masterList
-			end
-		end
-
-		local data = {
-			actionName = actionName,
-			localizedActionName = localizedActionName,
-			isRebindable = isRebindable,
-
-			layerIndex = layerIndex,
-			categoryIndex = categoryIndex,
-			actionIndex = actionIndex,
-
-			layerId = layerId,
-			categoryId = categoryId,
-		}
-
-		masterList[#masterList + 1] = ZO_ScrollList_CreateDataEntry(KEYBIND_DATA_TYPE, ZO_EntryData:New(data))
-
-		return layerId, categoryId
-	end
-
-	local function StripText(text)
-		return text:gsub("|c%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("^%s*(.-)%s*$", "%1"):upper()
-	end
-
-	local function SortActions(a, b)
-		if a.layerIndex ~= b.layerIndex then return a.layerIndex < b.layerIndex end
-		if a.categoryIndex ~= b.categoryIndex then return a.sortableCategoryName < b.sortableCategoryName end
-		return a.localizedActionName < b.localizedActionName
-	end
-
-	local function NoFilter() return true end
-	local upperCache = { }
+	local upperCache = {}
 	local function TextFilter(localizedActionName)
 		local upper = upperCache[localizedActionName]
 		if not upper then
@@ -280,73 +265,54 @@ local function HookBuildMasterList()
 		return zo_plainstrfind(upper, filterText)
 	end
 
-	function KEYBINDING_MANAGER.list:BuildMasterList()
-		if not self.masterList then
-			self.masterList = { }
-		else
-			ZO_ClearNumericallyIndexedTable(self.masterList)
+	local orgBuildMasterList = KEYBINDING_MANAGER.list.BuildMasterList
+	local orgGetKeybindData = KEYBINDINGS_MANAGER.GetKeybindData
+	local isBuildList
+	function KEYBINDING_MANAGER.list.BuildMasterList(...)
+		isBuildList = true
+		orgBuildMasterList(...)
+		isBuildList = false
+	end
+	local function createLayer(layerData)
+		local newLayer = ZO_ShallowTableCopy(layerData)
+		newLayer.categories = {}
+		setmetatable(newLayer, getmetatable(layerData))
+		return newLayer
+	end
+	function KEYBINDINGS_MANAGER.GetKeybindData(...)
+		if not isBuildList or filterText == "" then
+			return orgGetKeybindData(...)
 		end
-		local addonActions = { }
-		local masterList = self.masterList
-		local lastSI = SI_NONSTR_INGAMESHAREDSTRINGS_LAST_ENTRY
-
-		local GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo, GetActionInfo, GetString
-		=
-		GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo, GetActionInfo, GetString
-
-		local passedLayerFilter = filterText == "" and NoFilter or TextFilter
-		for layerIndex = 1, GetNumActionLayers() do
-			local layerName, numCategories = GetActionLayerInfo(layerIndex)
-			local layerId = nil
-
-			local passedCategoryFilter =(filterText == "" or passedLayerFilter(layerName)) and NoFilter or TextFilter
-			for categoryIndex = 1, numCategories do
-				local categoryName, numActions = GetActionLayerCategoryInfo(layerIndex, categoryIndex)
-
-				local passedActionFilter =(filterText == "" or passedCategoryFilter(categoryName)) and NoFilter or TextFilter
-				local categoryId = nil
-				for actionIndex = 1, numActions do
-					local actionName, isRebindable, isHidden = GetActionInfo(layerIndex, categoryIndex, actionIndex)
-					if not isHidden then
-						local actionSI = _G["SI_BINDING_NAME_" .. actionName]
-						local localizedActionName = GetString(actionSI)
-						if localizedActionName ~= "" and (passedActionFilter(localizedActionName) or passedActionFilter(actionName)) then
-							if type(actionSI) == "number" and actionSI < lastSI then
-								layerId, categoryId = AddBindingRow(masterList, layerIndex, categoryIndex, actionIndex, actionName, isRebindable, layerName, layerId, categoryName, categoryId, localizedActionName)
-							else
-								addonActions[#addonActions + 1] = {
-									layerIndex = layerIndex,
-									categoryIndex = categoryIndex,
-									actionIndex = actionIndex,
-									actionName = actionName,
-									isRebindable = isRebindable,
-									layerName = layerName,
-									sortableCategoryName = StripText(categoryName),
-									categoryName = categoryName,
-									localizedActionName = localizedActionName
-								}
+		local unfiltered = orgGetKeybindData(...)
+		local filtered = {}
+		for _, layerData in ipairs(unfiltered) do
+			local newLayer = nil
+			for _, categoryData in ipairs(layerData.categories) do
+				if categoryData.categoryName ~= "" and TextFilter(categoryData.categoryName) then
+					newLayer = newLayer or createLayer(layerData)
+					newLayer.categories[#newLayer.categories + 1] = categoryData
+				else
+					local newCategory = nil
+					for _, action in ipairs(categoryData.actions) do
+						local actionData = action:GetDataSource()
+						if (actionData.localizedActionName ~= "" and TextFilter(actionData.localizedActionName)) or TextFilter(actionData.actionName) then
+							newLayer = newLayer or createLayer(layerData)
+							if not newCategory then
+								newCategory = ZO_ShallowTableCopy(categoryData)
+								newCategory.actions = {}
+								setmetatable(newCategory, getmetatable(categoryData))
+								newLayer.categories[#newLayer.categories + 1] = newCategory
 							end
+							newCategory.actions[#newCategory.actions + 1] = action
 						end
 					end
 				end
 			end
-		end
-
-		table.sort(addonActions, SortActions)
-
-		local layerLast, categoryLast
-		for i = 1, #addonActions do
-			local action = addonActions[i]
-			if layerLast ~= action.layerIndex then
-				layerLast, categoryLast = nil, nil
-			else
-				if categoryLast ~= action.categoryIndex then categoryLast = nil end
+			if newLayer then
+				filtered[#filtered + 1] = newLayer
 			end
-			AddBindingRow(masterList, action.layerIndex, action.categoryIndex, action.actionIndex, action.actionName, action.isRebindable, action.layerName, layerLast, action.categoryName, categoryLast, action.localizedActionName)
-			layerLast, categoryLast = action.layerIndex, action.categoryIndex
 		end
-		addonActions = nil
-		collectgarbage()
+		return filtered
 	end
 end
 HookBuildMasterList()
@@ -360,6 +326,7 @@ HookKeybindingEventsHiding()
 local function HookKeybindsScrollList()
 	local function ChangeKeybindGlobal(control, checkState)
 		local data = ZO_ScrollList_GetData(control:GetParent())
+		data = data:GetDataSource()
 
 		if checkState == TRISTATE_CHECK_BUTTON_CHECKED then
 			addon.account.Keybindings[data.actionName] = addon.masterList[data.actionName]
@@ -390,31 +357,32 @@ local function HookKeybindsScrollList()
 	end
 
 	local orgsetupCallback = keybindList.list.dataTypes[KEYBIND_DATA_TYPE].setupCallback
-	local function SetupRow(control, data)
-		orgsetupCallback(control, data)
+	local function SetupRow(control, data, ...)
+		orgsetupCallback(control, data, ...)
 		local checkBox = control:GetNamedChild("VotansKeybindGlobal")
 		-- for merlight
-		if not checkBox then checkBox = CreateCheckBox(control) end
-
+		if not checkBox then
+			checkBox = CreateCheckBox(control)
+		end
+		data = data:GetDataSource()
 		local globalKeybindings = addon.account.Keybindings[data.actionName]
 		local isAccountWide = globalKeybindings and CompareBinding(globalKeybindings, data)
-		ZO_TriStateCheckButton_SetState(checkBox, isAccountWide and TRISTATE_CHECK_BUTTON_CHECKED or(globalKeybindings == nil and TRISTATE_CHECK_BUTTON_UNCHECKED or TRISTATE_CHECK_BUTTON_INDETERMINATE))
+		ZO_TriStateCheckButton_SetState(checkBox, isAccountWide and TRISTATE_CHECK_BUTTON_CHECKED or (globalKeybindings == nil and TRISTATE_CHECK_BUTTON_UNCHECKED or TRISTATE_CHECK_BUTTON_INDETERMINATE))
 	end
 	keybindList.list.dataTypes[KEYBIND_DATA_TYPE].setupCallback = SetupRow
 
 	local orgFactory = keybindList.list.dataTypes[KEYBIND_DATA_TYPE].pool.m_Factory
-	local function Factory(pool)
-		local control = orgFactory(pool)
+	local function Factory(pool, ...)
+		local control, b = orgFactory(pool, ...)
 		CreateCheckBox(control)
 		return control
 	end
 	keybindList.list.dataTypes[KEYBIND_DATA_TYPE].pool.m_Factory = Factory
 	keybindList:SetLockedForUpdates(true)
 end
-HookKeybindsScrollList()
 
 function addon:CreateBindingList()
-	self.masterList = { }
+	self.masterList = {}
 	local masterList = self.masterList
 	local accountList = self.account.Keybindings
 
@@ -458,9 +426,7 @@ function addon:FirstRun()
 	local defaults = self.DefaultGlobalActionName
 	local globalKeybindings = self.account.Keybindings
 
-	local GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo, GetActionInfo, KeybindingsOfActionName
-	=
-	GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo, GetActionInfo, KeybindingsOfActionName
+	local GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo, GetActionInfo, KeybindingsOfActionName = GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo, GetActionInfo, KeybindingsOfActionName
 
 	for layerIndex = 1, GetNumActionLayers() do
 		local _, numCategories = GetActionLayerInfo(layerIndex)
@@ -486,7 +452,7 @@ do
 		local globalKeybindings = self.account.Keybindings
 		local GetActionInfo, GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo = GetActionInfo, GetNumActionLayers, GetActionLayerInfo, GetActionLayerCategoryInfo
 
-		local current = { }
+		local current = {}
 		local function CheckSync()
 			local actionName, _, isHidden = GetActionInfo(current.layerIndex, current.categoryIndex, current.actionIndex)
 			local bind
@@ -527,20 +493,27 @@ end
 function addon:ToggleShareState()
 	local function AllShared(accountList, visibleActions)
 		for i = 1, #visibleActions do
-			if accountList[visibleActions[i]] == nil then return false end
+			if accountList[visibleActions[i]] == nil then
+				return false
+			end
 		end
 		return true
 	end
 	local list = ZO_ScrollList_GetDataList(keybindList.list)
-	local visibleActions = { }
+	local visibleActions = {}
 	for i = 1, #list do
 		local entry = list[i]
-		if entry.typeId >= KEYBIND_DATA_TYPE and entry.data.actionName and HasBinding(entry.data) then
-			visibleActions[#visibleActions + 1] = entry.data.actionName
+		if entry.typeId >= KEYBIND_DATA_TYPE then
+			local data = entry.data:GetDataSource()
+			if data.actionName and HasBinding(data) then
+				visibleActions[#visibleActions + 1] = data.actionName
+			end
 		end
 	end
 
-	if #visibleActions == 0 then return end
+	if #visibleActions == 0 then
+		return
+	end
 
 	local accountList = self.account.Keybindings
 	if AllShared(accountList, visibleActions) then
@@ -554,8 +527,8 @@ function addon:ToggleShareState()
 		for i = 1, #list do
 			bind = list[i]
 			if bind.typeId >= KEYBIND_DATA_TYPE then
-				bind = bind.data
-				if bind.actionName and(HasBinding(bind) or self.DefaultGlobalActionName[bind.actionName]) then
+				bind = bind.data:GetDataSource()
+				if bind.actionName and (HasBinding(bind) or self.DefaultGlobalActionName[bind.actionName]) then
 					masterList[bind.actionName] = KeybindingsOfActionName(bind.layerIndex, bind.categoryIndex, bind.actionIndex)
 					accountList[bind.actionName] = masterList[bind.actionName]
 				end
@@ -593,7 +566,7 @@ local function SetupControl()
 	bagSearchBg:SetAnchor(TOPLEFT, ZO_Keybindings, TOPLEFT, 74, 38)
 	bagSearchBg:SetDimensions(textWidth, 31)
 
-	local closeButton = WINDOW_MANAGER:CreateControlFromVirtual(nil, bagSearch, "ZO_CloseButton")
+	local closeButton = WINDOW_MANAGER:CreateControlFromVirtual(nil, bagSearchBg, "ZO_CloseButton")
 	local function VotansKeybinderFocusGained(bagSearch, ...)
 		bagSearchTx:SetText("")
 		bagSearchBg:SetAlpha(0.25)
@@ -615,7 +588,9 @@ local function SetupControl()
 		return false
 	end
 	local function VotansKeybinderTextChanged(control, ...)
-		if WINDOW_MANAGER:GetFocusControl() ~= bagSearch then return VotansKeybinderFocusLost(control, ...) end
+		if WINDOW_MANAGER:GetFocusControl() ~= bagSearch then
+			return VotansKeybinderFocusLost(control, ...)
+		end
 		return false
 	end
 	local function VotansKeybinderCloseClick(control, ...)
@@ -641,46 +616,72 @@ local function SetupControl()
 	bagSearchTx:SetAnchorFill()
 	VotansKeybinderFocusLost(bagSearch)
 
-	bagSearch:SetHandler("OnEscape", function(control)
-		control:LoseFocus()
-		control:SetText("")
-	end )
+	bagSearch:SetHandler(
+		"OnEscape",
+		function(control)
+			control:LoseFocus()
+			control:SetText("")
+		end
+	)
 
-	bagSearch:SetHandler("OnTextChanged", function(control)
-		ZO_EditDefaultText_OnTextChanged(control)
-		addon:FilterTextChanged()
-	end )
+	bagSearch:SetHandler(
+		"OnTextChanged",
+		function(control)
+			ZO_EditDefaultText_OnTextChanged(control)
+			addon:FilterTextChanged()
+		end
+	)
 
-	bagSearch:SetHandler("OnEnter", function(control)
-		control:LoseFocus()
-	end )
+	bagSearch:SetHandler(
+		"OnEnter",
+		function(control)
+			control:LoseFocus()
+		end
+	)
 
 	ZO_PreHookHandler(bagSearch, "OnFocusGained", VotansKeybinderFocusGained)
 	ZO_PreHookHandler(bagSearch, "OnFocusLost", VotansKeybinderFocusLost)
 	ZO_PreHookHandler(bagSearch, "OnTextChanged", VotansKeybinderTextChanged)
-
 end
 
 function addon:Initialize()
 	self:HandleControlsPageOpened()
 	if next(addon.account.Keybindings) == nil then
-		em:RegisterForEvent(self.name, EVENT_PLAYER_ACTIVATED, function() self:FirstRun() end)
-	elseif IsUnitInCombat("player") then
-		em:RegisterForEvent(self.name, EVENT_PLAYER_COMBAT_STATE, function(eventCode, inCombat)
-			if not inCombat then
-				em:UnregisterForEvent(self.name, EVENT_PLAYER_COMBAT_STATE)
-				self:SyncKeybindings()
+		em:RegisterForEvent(
+			self.name,
+			EVENT_PLAYER_ACTIVATED,
+			function()
+				self:FirstRun()
 			end
-		end )
+		)
+	elseif IsUnitInCombat("player") then
+		em:RegisterForEvent(
+			self.name,
+			EVENT_PLAYER_COMBAT_STATE,
+			function(eventCode, inCombat)
+				if not inCombat then
+					em:UnregisterForEvent(self.name, EVENT_PLAYER_COMBAT_STATE)
+					self:SyncKeybindings()
+				end
+			end
+		)
 	else
 		self:SyncKeybindings()
 	end
 
 	local control = wm:CreateControlFromVirtual("$(parent)KeybinderToggle", ZO_Keybindings, "ZO_DialogButton")
 	control:SetAnchor(TOPLEFT, ZO_KeybindingsLoadGamepadDefaults, TOPRIGHT, 15, 0)
-	ZO_KeybindButtonTemplate_Setup(control, "VOTANS_KEYBINDER_TOGGLE", function() self:ToggleShareState() end, GetString(SI_VOTANS_KEYBINDER_TOGGLE))
+	ZO_KeybindButtonTemplate_Setup(
+		control,
+		"VOTANS_KEYBINDER_TOGGLE",
+		function()
+			self:ToggleShareState()
+		end,
+		GetString(SI_VOTANS_KEYBINDER_TOGGLE)
+	)
 
 	SetupControl()
+	HookKeybindsScrollList()
 
 	local function OnStateChanged(oldState, newState)
 		if newState == SCENE_FRAGMENT_HIDING then
@@ -688,11 +689,12 @@ function addon:Initialize()
 		end
 	end
 	KEYBINDINGS_FRAGMENT:RegisterCallback("StateChange", OnStateChanged)
-
 end
 
 local function OnAddonLoaded(event, name)
-	if name ~= addon.name then return end
+	if name ~= addon.name then
+		return
+	end
 	EVENT_MANAGER:UnregisterForEvent(addon.name, EVENT_ADD_ON_LOADED)
 
 	addon.account = ZO_SavedVars:New("VotansKeybinder_Data", 1, nil, addon.accountDefaults, "Default", "$Machine", "$UserProfileWide")

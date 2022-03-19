@@ -1,8 +1,8 @@
 ## Title: Votan's Keybinder
 ## Author: votan
 ## Description: Adds checkboxes to key-bind dialog for user-account-wide key-bindings
-## APIVersion: 101032 101033
-## Version: 1.3.5
+## APIVersion: 101033 101034
+## Version: 1.4.0
 ## DependsOn: libAddonKeybinds>=5
 ## SavedVariables: VotansKeybinder_Data
 
